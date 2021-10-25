@@ -126,7 +126,6 @@ int main(int argc, char *argv[])
 	{
 		// accept new connection
 		socklen_t addrlen = sizeof(struct sockaddr_in);
-		size_t failedcount = 0;
 
     printf("Waiting for connection\n");
 
@@ -138,8 +137,8 @@ int main(int argc, char *argv[])
 		printf("Connected!\n");
 
 		// exchange keys
-		if (keyexchange(con.sock, &con.ctx)) {
-			perror("keyexchange failed");
+		if (keyexchange(con.sock, &con.ctx, false)) {
+			printf("keyexchange failed\n");
 			return -8;
 		}
 		printf("Authentication Complete!\n");
@@ -165,6 +164,8 @@ int main(int argc, char *argv[])
 			if (len > 0) {
 				if (send_encrypted(con.sock, &con.ctx, buff) <
 				    0) {
+				    printf("send_encrypted failed!");
+				    return -11;
 				}
 			}
 
@@ -176,7 +177,7 @@ int main(int argc, char *argv[])
 					    TRANS_BUFF_SIZE);
 				if (len < 0) {
 					perror("write failed");
-					return -11;
+					return -12;
 				}
 
 				if (buff[0] == 'e' && buff[1] == 'x' &&
@@ -186,11 +187,7 @@ int main(int argc, char *argv[])
 
 			} else if (len < 0) {
 				printf("recv_encrypted failed with %d!\n", len);
-				failedcount++;
-			}
-
-			if (failedcount > 10) {
-				return -12;
+				return -13;
 			}
 
 			sleep(1);
@@ -198,13 +195,13 @@ int main(int argc, char *argv[])
 
 		if (close(con.sock)) {
 			perror("close failed");
-			return -13;
+			return -14;
 		}
 	}
 
 	if (close(sock)) {
 		perror("close failed");
-		return -14;
+		return -15;
 	}
 	return 0;
 }
