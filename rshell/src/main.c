@@ -42,15 +42,6 @@ struct connection {
 	bool exit;
 };
 
-void printkey(unsigned char input[], size_t len)
-{
-	size_t i;
-
-	for (i = 0; i < len; i++) {
-		dbprintf("%x", input[i]);
-	}
-	dbprint("\n");
-}
 
 int setupcon(struct connection *con)
 {
@@ -125,7 +116,6 @@ int closecon(struct connection *con)
 void *relay(void *data)
 {
 	int len;
-	size_t failedcount = 0;
 	struct connection *con = (struct connection *)data;
 
 	unsigned char buff[TRANS_BUFF_SIZE];
@@ -138,11 +128,6 @@ void *relay(void *data)
 	}
 
 	while (!con->exit) {
-		if (failedcount > 10) {
-			con->exit = true;
-			dbprint("Relay exiting because decrypting failed too often...\n");
-		}
-
 		memset(buff, 0, TRANS_BUFF_SIZE);
 
 		// decrypt incomming cipher into buff
@@ -158,8 +143,6 @@ void *relay(void *data)
 
 		} else if (len < 0) {
 			dbprintf("recv_encrypted failed with %d!\n", len);
-			failedcount++;
-			dbprint("recv_encrypted failed!\n");
 		}
 
 		memset(buff, 0, TRANS_BUFF_SIZE);
@@ -175,8 +158,6 @@ void *relay(void *data)
 			if (send_encrypted(con->sock, &con->ctx, buff) < 0) {
 				dbprintf("send_encrypted failed with %d!\n",
 					 len);
-				failedcount++;
-				dbprint("send_encrypted failed!\n");
 			}
 		}
 	}
@@ -271,10 +252,6 @@ int spawnconsole(struct connection *con)
 				if (WIFEXITED(rv)) {
 					dbprintf("Shell process returned %d\n",
 						 WEXITSTATUS(rv));
-					break;
-
-				} else if (WIFSTOPPED(rv)) {
-					dbprint("Fork stopped!\n");
 					break;
 				}
 			} else {
@@ -417,7 +394,7 @@ int main(int argc, char *argv[])
 			dbprint("Connected!\n");
 
 			// keyexchange between client and server
-			rv = keyexchange(con.sock, &con.ctx);
+			rv = keyexchange(con.sock, &con.ctx, true);
 			if (rv) {
 				dbprintf("keyexchange:%d\n", rv);
 				return -9;

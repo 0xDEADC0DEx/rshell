@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 
+#include "wrapper.h"
 #include "misc.h"
 
 extern bool brexit;
