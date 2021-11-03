@@ -189,7 +189,9 @@ int main(int argc, char *argv[])
 				return -13;
 			}
 
-			sleep(1);
+			if (usleep(25000)) {
+				return -14;
+			}
 		}
 
 		if (close(con.sock)) {

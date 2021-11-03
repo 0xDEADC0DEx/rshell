@@ -261,12 +261,14 @@ int spawnconsole(struct connection *con)
 				return -11;
 			}
 
-			sleep(1);
+			if (usleep(25000)) {
+				return -12;
+			}
 		}
 
 		con->exit = true;
 		if (pthread_join(thread, NULL)) {
-			return -12;
+			return -13;
 		}
 		dbprintf("Relay thread returned %d\n", con->relayrv);
 	}
@@ -392,7 +394,6 @@ int main(int argc, char *argv[])
 						 strerror(errno));
 					return -7;
 				}
-				sleep(1);
 			}
 			dbprint("Connected!\n");
 
@@ -416,6 +417,10 @@ int main(int argc, char *argv[])
 			if (rv) {
 				dbprintf("closecon:%d\n", rv);
 				return -11;
+			}
+
+			if (usleep(25000)) {
+				return -12;
 			}
 		}
 
