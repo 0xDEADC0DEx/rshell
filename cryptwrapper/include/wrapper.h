@@ -5,7 +5,7 @@
 
 #include <sodium.h>
 
-#define TRANS_BUFF_SIZE 100
+#define TRANS_BUFF_SIZE 500
 
 #define DEBUG
 
