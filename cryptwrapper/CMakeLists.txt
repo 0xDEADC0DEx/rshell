@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.19)
+cmake_minimum_required(VERSION 3.13)
 
 # set source and include directories
 file (GLOB CRYPT_SRC "src/*.c")
