@@ -9,6 +9,7 @@
 
 #include "wrapper.h"
 #include "misc.h"
+#include "logger.h"
 
 extern bool brexit;
 
@@ -34,8 +35,11 @@ int init_signalhandler()
 	sigemptyset(&action.sa_mask);
 
 	for (i = 0; i < sizeof signals; i++) {
-		if (sigaction(signals[i], &action, NULL)) {
-			dbprint("sigaction");
+		int rv;
+
+		rv = sigaction(signals[i], &action, NULL);
+		if (rv) {
+			ERR(rv)
 			return -1;
 		}
 	}
@@ -86,11 +90,17 @@ int forkoff()
 
 int closepipe(int pipe[2])
 {
-	if (close(pipe[0]) && errno != EBADF) {
+	int rv;
+
+	rv = close(pipe[0]);
+	if (rv && errno != EBADF) {
+		ERR(rv);
 		return -1;
 	}
 
-	if (close(pipe[1]) && errno != EBADF) {
+	rv = close(pipe[1]);
+	if (rv && errno != EBADF) {
+		ERR(rv);
 		return -2;
 	}
 	return 0;
