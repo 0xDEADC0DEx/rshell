@@ -18,11 +18,11 @@ int send_encrypted(int sock, struct crypto_ctx *con,
 
 	len = send(sock, cipher_buff,
 		   TRANS_BUFF_SIZE + crypto_secretbox_MACBYTES, 0);
-	/*  */
-	/* if (len > 0) {  */
-	/*   sodium_increment(con->nonce, sizeof con->nonce); */
-	/*   dbprint("Nonce incremented!\n"); */
-	/* } */
+
+	if (len > 0) {
+		/* sodium_increment(con->nonce, sizeof con->nonce); */
+		dbprint("Nonce incremented!\n");
+	}
 	return len;
 }
 
@@ -47,7 +47,7 @@ int recv_encrypted(int sock, struct crypto_ctx *con,
 		}
 
 		/* sodium_increment(con->nonce, sizeof con->nonce); */
-		/* dbprint("Nonce incremented!\n"); */
+		dbprint("Nonce incremented!\n");
 		return len;
 	}
 	return 0;
@@ -112,21 +112,24 @@ int keyexchange(int sock, struct crypto_ctx *con, bool client)
 	// send encrypted nonce with fixed_nonce
 	randombytes_buf_deterministic(con->nonce, sizeof con->nonce, seed);
 
-	// Test the connection with a handshake
-	if (send_encrypted(sock, con, "HelloWorld!") < 0) {
-		return -4;
-	}
+	{
+		unsigned char temp[TRANS_BUFF_SIZE] = "HelloWorld";
 
-	int rv;
-	unsigned char temp[TRANS_BUFF_SIZE];
-	rv = recv_encrypted(sock, con, temp);
-	if (rv < 0) {
-		dbprintf("ding dong%d\n", rv);
-		return -5;
-	}
+		// Test the connection with a handshake
+		if (send_encrypted(sock, con, temp) < 0) {
+			return -4;
+		}
 
-	if (temp[3] != 'l') {
-		return -6;
+		int rv;
+		rv = recv_encrypted(sock, con, temp);
+		if (rv < 0) {
+			dbprintf("recv_encrypted failed with %d\n", rv);
+			return -5;
+		}
+
+		if (temp[3] != 'l') {
+			return -6;
+		}
 	}
 
 	return 0;
