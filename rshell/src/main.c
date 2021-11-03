@@ -158,6 +158,11 @@ void *relay(void *data)
 					 len);
 			}
 		}
+
+		if (usleep(25000)) {
+			con->relayrv = -4;
+			return NULL;
+		}
 	}
 	return NULL;
 }
