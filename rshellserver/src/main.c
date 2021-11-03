@@ -13,7 +13,6 @@
 
 #include "wrapper.h"
 
-
 bool brexit = false;
 uint16_t port = 6969;
 
@@ -127,7 +126,7 @@ int main(int argc, char *argv[])
 		// accept new connection
 		socklen_t addrlen = sizeof(struct sockaddr_in);
 
-    printf("Waiting for connection\n");
+		printf("Waiting for connection\n");
 
 		con.sock = accept(sock, (struct sockaddr *)&sin, &addrlen);
 		if (con.sock < 0) {
@@ -164,8 +163,8 @@ int main(int argc, char *argv[])
 			if (len > 0) {
 				if (send_encrypted(con.sock, &con.ctx, buff) <
 				    0) {
-				    printf("send_encrypted failed!");
-				    return -11;
+					printf("send_encrypted failed!");
+					return -11;
 				}
 			}
 

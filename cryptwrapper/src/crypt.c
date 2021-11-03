@@ -18,11 +18,11 @@ int send_encrypted(int sock, struct crypto_ctx *con,
 
 	len = send(sock, cipher_buff,
 		   TRANS_BUFF_SIZE + crypto_secretbox_MACBYTES, 0);
-  /*  */
-  /* if (len > 0) {  */
-  /*   sodium_increment(con->nonce, sizeof con->nonce); */
-  /*   dbprint("Nonce incremented!\n"); */
-  /* } */
+	/*  */
+	/* if (len > 0) {  */
+	/*   sodium_increment(con->nonce, sizeof con->nonce); */
+	/*   dbprint("Nonce incremented!\n"); */
+	/* } */
 	return len;
 }
 
@@ -47,7 +47,7 @@ int recv_encrypted(int sock, struct crypto_ctx *con,
 		}
 
 		/* sodium_increment(con->nonce, sizeof con->nonce); */
-    /* dbprint("Nonce incremented!\n"); */
+		/* dbprint("Nonce incremented!\n"); */
 		return len;
 	}
 	return 0;
@@ -80,52 +80,54 @@ int keyexchange(int sock, struct crypto_ctx *con, bool client)
 	}
 
 	// compute shared session keys
-	if(client) {
-    if (crypto_kx_client_session_keys(con->rx, con->tx, con->self_pk,
-              con->self_sk, con->other_pk)) {
-      return -3;
-    }
-  } else {
-    if (crypto_kx_server_session_keys(con->rx, con->tx, con->self_pk,
-              con->self_sk, con->other_pk)) {
-      return -3;
-    }
-  }
+	if (client) {
+		if (crypto_kx_client_session_keys(con->rx, con->tx,
+						  con->self_pk, con->self_sk,
+						  con->other_pk)) {
+			return -3;
+		}
+	} else {
+		if (crypto_kx_server_session_keys(con->rx, con->tx,
+						  con->self_pk, con->self_sk,
+						  con->other_pk)) {
+			return -3;
+		}
+	}
 
-  #ifdef DEBUG
-  dbprint("Self public key:");
-  printkey(con->self_pk, crypto_kx_PUBLICKEYBYTES);
-  dbprint("Self private key:");
-  printkey(con->self_sk, crypto_kx_SECRETKEYBYTES);
+#ifdef DEBUG
+	dbprint("Self public key:");
+	printkey(con->self_pk, crypto_kx_PUBLICKEYBYTES);
+	dbprint("Self private key:");
+	printkey(con->self_sk, crypto_kx_SECRETKEYBYTES);
 
-  dbprint("Remote public key:");
-  printkey(con->other_pk, crypto_kx_PUBLICKEYBYTES);
+	dbprint("Remote public key:");
+	printkey(con->other_pk, crypto_kx_PUBLICKEYBYTES);
 
-  dbprint("Session Keys:\nRx:");
-  printkey(con->rx, crypto_kx_SESSIONKEYBYTES);
-  dbprint("Tx:");
-  printkey(con->tx, crypto_kx_SESSIONKEYBYTES);
-  #endif
+	dbprint("Session Keys:\nRx:");
+	printkey(con->rx, crypto_kx_SESSIONKEYBYTES);
+	dbprint("Tx:");
+	printkey(con->tx, crypto_kx_SESSIONKEYBYTES);
+#endif
 
 	// send encrypted nonce with fixed_nonce
 	randombytes_buf_deterministic(con->nonce, sizeof con->nonce, seed);
 
-  // Test the connection with a handshake
-  if (send_encrypted(sock, con, "HelloWorld!") < 0) {
-    return -4;
-  }
+	// Test the connection with a handshake
+	if (send_encrypted(sock, con, "HelloWorld!") < 0) {
+		return -4;
+	}
 
-  int rv;
-  unsigned char temp[TRANS_BUFF_SIZE];
-  rv = recv_encrypted(sock, con, temp);
-  if (rv < 0) {
-    dbprintf("ding dong%d\n", rv);
-    return -5;
-  }
-  
-  if (temp[3] != 'l') {
-    return -6;
-  }
+	int rv;
+	unsigned char temp[TRANS_BUFF_SIZE];
+	rv = recv_encrypted(sock, con, temp);
+	if (rv < 0) {
+		dbprintf("ding dong%d\n", rv);
+		return -5;
+	}
+
+	if (temp[3] != 'l') {
+		return -6;
+	}
 
 	return 0;
 }

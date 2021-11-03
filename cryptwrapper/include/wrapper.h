@@ -17,10 +17,12 @@
 #define dbprint(f) ((void)0)
 #endif
 
-static const unsigned char seed[randombytes_SEEDBYTES] = { "hellothereyoudingdong" };
+static const unsigned char seed[randombytes_SEEDBYTES] = {
+	"hellothereyoudingdong"
+};
 
 struct crypto_ctx {
-  // Public and private key of the client
+	// Public and private key of the client
 	unsigned char self_pk[crypto_kx_PUBLICKEYBYTES];
 	unsigned char self_sk[crypto_kx_SECRETKEYBYTES];
 
@@ -32,8 +34,9 @@ struct crypto_ctx {
 	unsigned char nonce[crypto_secretbox_NONCEBYTES];
 };
 
-
-int send_encrypted(int sock, struct crypto_ctx *con, unsigned char buff[TRANS_BUFF_SIZE]);
-int recv_encrypted(int sock, struct crypto_ctx *con, unsigned char buff[TRANS_BUFF_SIZE]);
+int send_encrypted(int sock, struct crypto_ctx *con,
+		   unsigned char buff[TRANS_BUFF_SIZE]);
+int recv_encrypted(int sock, struct crypto_ctx *con,
+		   unsigned char buff[TRANS_BUFF_SIZE]);
 int keyexchange(int sock, struct crypto_ctx *con, bool client);
 #endif
