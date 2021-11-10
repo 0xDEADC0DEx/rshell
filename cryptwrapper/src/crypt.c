@@ -24,8 +24,6 @@ int send_encrypted(int sock, struct crypto_ctx *con,
 	int len;
 	unsigned char cipher_buff[TRANS_BUFF_SIZE + crypto_secretbox_MACBYTES];
 
-	LOG(1, "Sending:\n%s\n", buff);
-
 	crypto_secretbox_easy(cipher_buff, buff, TRANS_BUFF_SIZE, con->nonce,
 			      con->tx);
 
@@ -33,11 +31,10 @@ int send_encrypted(int sock, struct crypto_ctx *con,
 		   TRANS_BUFF_SIZE + crypto_secretbox_MACBYTES, 0);
 
 	if (len > 0) {
-		/* sodium_increment(con->nonce, sizeof con->nonce); */
+		sodium_increment(con->nonce, sizeof con->nonce);
 		LOG(1, "Nonce incremented!\n");
-		printkey(con->nonce, crypto_secretbox_NONCEBYTES);
+		LOG(1, "\nSent encrypted:\n{\n%s\n}\n", buff);
 	}
-	LOG(1, "Sent:\n%s\n", buff);
 	return len;
 }
 
@@ -61,9 +58,9 @@ int recv_encrypted(int sock, struct crypto_ctx *con,
 			return -2;
 		}
 
-		/* sodium_increment(con->nonce, sizeof con->nonce); */
+		sodium_increment(con->nonce, sizeof con->nonce);
 		LOG(1, "Nonce incremented!\n");
-		printkey(con->nonce, crypto_secretbox_NONCEBYTES);
+		LOG(1, "\nReceived encrypted:\n{\n%s\n}\n", buff);
 		return len;
 	}
 	return 0;
@@ -120,19 +117,39 @@ int keyexchange(int sock, struct crypto_ctx *con, bool client)
 		unsigned char temp[TRANS_BUFF_SIZE] = "HelloWorld";
 
 		// Test the connection with a handshake
-		if (send_encrypted(sock, con, temp) < 0) {
-			return -4;
-		}
+		// (Basically just send Hello world between client and server)
+		if (client) {
+			int rv;
 
-		int rv;
-		rv = recv_encrypted(sock, con, temp);
-		if (rv < 0) {
-			ERR(rv);
-			return -5;
-		}
+			if (send_encrypted(sock, con, temp) < 0) {
+				return -4;
+			}
 
-		if (temp[3] != 'l') {
-			return -6;
+			rv = recv_encrypted(sock, con, temp);
+			if (rv < 0) {
+				ERR(rv);
+				return -5;
+			}
+
+			if (temp[3] != 'l') {
+				return -6;
+			}
+		} else {
+			int rv;
+
+			rv = recv_encrypted(sock, con, temp);
+			if (rv < 0) {
+				ERR(rv);
+				return -4;
+			}
+
+			if (temp[3] != 'l') {
+				return -5;
+			}
+
+			if (send_encrypted(sock, con, temp) < 0) {
+				return -6;
+			}
 		}
 	}
 

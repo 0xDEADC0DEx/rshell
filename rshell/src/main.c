@@ -167,7 +167,7 @@ void *relay(void *data)
 				con->relayrv = -2;
 				return NULL;
 			}
-			LOG(1, "written:%s\n", buff);
+			LOG(1, "Relay wrote to the fd:\n%s\n\n", buff);
 
 		} else if (len < 0) {
 			ERR(len);
