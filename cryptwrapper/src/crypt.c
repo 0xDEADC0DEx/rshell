@@ -8,6 +8,16 @@
 #include "logger.h"
 #include "wrapper.h"
 
+void printkey(unsigned char input[], size_t len)
+{
+	size_t i;
+
+	for (i = 0; i < len; i++) {
+		LOG(1, "%x", input[i]);
+	}
+	LOG(1, "\n");
+}
+
 int send_encrypted(int sock, struct crypto_ctx *con,
 		   unsigned char buff[TRANS_BUFF_SIZE])
 {
@@ -25,6 +35,7 @@ int send_encrypted(int sock, struct crypto_ctx *con,
 	if (len > 0) {
 		/* sodium_increment(con->nonce, sizeof con->nonce); */
 		LOG(1, "Nonce incremented!\n");
+		printkey(con->nonce, crypto_secretbox_NONCEBYTES);
 	}
 	LOG(1, "Sent:\n%s\n", buff);
 	return len;
@@ -52,19 +63,10 @@ int recv_encrypted(int sock, struct crypto_ctx *con,
 
 		/* sodium_increment(con->nonce, sizeof con->nonce); */
 		LOG(1, "Nonce incremented!\n");
+		printkey(con->nonce, crypto_secretbox_NONCEBYTES);
 		return len;
 	}
 	return 0;
-}
-
-void printkey(unsigned char input[], size_t len)
-{
-	size_t i;
-
-	for (i = 0; i < len; i++) {
-		LOG(1, "%x", input[i]);
-	}
-	LOG(1, "\n");
 }
 
 int keyexchange(int sock, struct crypto_ctx *con, bool client)
@@ -127,7 +129,7 @@ int keyexchange(int sock, struct crypto_ctx *con, bool client)
 		int rv;
 		rv = recv_encrypted(sock, con, temp);
 		if (rv < 0) {
-			LOG(-1, "recv_encrypted failed with %d\n", rv);
+			ERR(rv);
 			return -5;
 		}
 

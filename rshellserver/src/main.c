@@ -136,7 +136,7 @@ int main(int argc, char *argv[])
 
 		con.sock = accept(sock, (struct sockaddr *)&sin, &addrlen);
 		if (con.sock < 0) {
-			LOG(-1, "accept failed with %d\n", con.sock);
+			ERR(con.sock);
 			return -7;
 		}
 		LOG(0, "Connected!\n");
@@ -144,7 +144,7 @@ int main(int argc, char *argv[])
 		// exchange keys
 		rv = keyexchange(con.sock, &con.ctx, false);
 		if (rv) {
-			LOG(-1, "keyexchange failed with %d\n", rv);
+			ERR(rv);
 			return -8;
 		}
 		LOG(0, "Authentication Complete!\n");
@@ -164,16 +164,14 @@ int main(int argc, char *argv[])
 			len = read(STDIN_FILENO, buff, TRANS_BUFF_SIZE);
 			if (len < 0 && errno != EWOULDBLOCK &&
 			    errno != EAGAIN) {
-				perror("read failed");
+				ERR(len);
 				return -10;
 			}
 
 			if (len > 0) {
 				rv = send_encrypted(con.sock, &con.ctx, buff);
 				if (rv < 0) {
-					LOG(-1,
-					    "send_encrypted failed with %d!",
-					    rv);
+					ERR(rv);
 					return -11;
 				}
 			}
@@ -185,7 +183,7 @@ int main(int argc, char *argv[])
 				len = write(STDOUT_FILENO, buff,
 					    TRANS_BUFF_SIZE);
 				if (len < 0) {
-					perror("write failed");
+					ERR(len);
 					return -12;
 				}
 
@@ -195,8 +193,7 @@ int main(int argc, char *argv[])
 				}
 
 			} else if (len < 0) {
-				LOG(-1, "recv_encrypted failed with %d!\n",
-				    len);
+				ERR(len);
 				return -13;
 			}
 

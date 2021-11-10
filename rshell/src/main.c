@@ -25,6 +25,8 @@
 
 #define IP_LEN 16
 
+/* #define FORKOFF */
+
 bool brexit = false;
 
 struct connection {
@@ -354,6 +356,11 @@ int argparse(int argc, char *argv[], struct connection *con)
 				}
 			}
 			break;
+		case 'v':
+			if (g_loglevel <= 1) {
+				g_loglevel++;
+			}
+			break;
 		}
 	}
 
@@ -390,15 +397,15 @@ int main(int argc, char *argv[])
 
 	rv = argparse(argc, argv, &con);
 	if (rv) {
-		LOG(-1, "argparse:%d\n", rv);
+		ERR(rv);
 		return -4;
 	}
 
 	// fork off like a daemon
-#ifndef DEBUG
+#ifdef FORKOFF
 	rv = forkoff();
 	if (rv) {
-		LOG(-1, "forkoff: %d\n", rv);
+		ERR(rv);
 		return -5;
 	}
 #endif
@@ -409,7 +416,7 @@ int main(int argc, char *argv[])
 			// setup a connection
 			rv = setupcon(&con);
 			if (rv) {
-				LOG(-1, "setupcon:%d\n", rv);
+				ERR(rv);
 				return -6;
 			}
 
@@ -422,8 +429,7 @@ int main(int argc, char *argv[])
 					     sizeof(con.sin));
 				if (rv && errno != ECONNREFUSED &&
 				    errno != EINPROGRESS) {
-					dbprintf("connect: %s\n",
-						 strerror(errno));
+					ERR(rv);
 					return -7;
 				}
 			}
@@ -432,7 +438,7 @@ int main(int argc, char *argv[])
 			// keyexchange between client and server
 			rv = keyexchange(con.sock, &con.ctx, true);
 			if (rv) {
-				dbprintf("keyexchange:%d\n", rv);
+				ERR(rv);
 				return -9;
 			}
 			LOG(0, "Authentication complete!\n");
@@ -440,14 +446,14 @@ int main(int argc, char *argv[])
 			// spawn console / dups fds so that shell is usable over the sock
 			rv = spawnconsole(&con);
 			if (rv) {
-				LOG(-1, "spawnconsole:%d\n", rv);
+				ERR(rv);
 				return -10;
 			}
 
 			// close connection
 			rv = closecon(&con);
 			if (rv) {
-				LOG(-1, "closecon:%d\n", rv);
+				ERR(rv);
 				return -11;
 			}
 

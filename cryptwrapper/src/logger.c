@@ -4,7 +4,7 @@
 
 #include "logger.h"
 
-short g_loglevel;
+short g_loglevel = 0;
 
 void _logger(short lvl, const char format[], ...)
 {

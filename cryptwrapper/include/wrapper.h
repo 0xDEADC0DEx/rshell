@@ -7,16 +7,6 @@
 
 #define TRANS_BUFF_SIZE 500
 
-#define DEBUG
-
-#ifdef DEBUG
-#define dbprintf(f, p...) printf(f, p)
-#define dbprint(f) printf(f)
-#else
-#define dbprintf(f, p...) ((void)0)
-#define dbprint(f) ((void)0)
-#endif
-
 static const unsigned char seed[randombytes_SEEDBYTES] = {
 	"hellothereyoudingdong"
 };
