@@ -67,6 +67,11 @@ int argparse(int argc, char *argv[])
 				}
 			}
 			break;
+		case 'v':
+			if (g_loglevel <= 1) {
+				g_loglevel++;
+			}
+			break;
 		}
 	}
 

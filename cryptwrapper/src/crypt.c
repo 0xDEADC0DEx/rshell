@@ -100,7 +100,6 @@ int keyexchange(int sock, struct crypto_ctx *con, bool client)
 		}
 	}
 
-#ifdef DEBUG
 	LOG(1, "Self public key:");
 	printkey(con->self_pk, crypto_kx_PUBLICKEYBYTES);
 	LOG(1, "Self private key:");
@@ -113,7 +112,6 @@ int keyexchange(int sock, struct crypto_ctx *con, bool client)
 	printkey(con->rx, crypto_kx_SESSIONKEYBYTES);
 	LOG(1, "Tx:");
 	printkey(con->tx, crypto_kx_SESSIONKEYBYTES);
-#endif
 
 	// send encrypted nonce with fixed_nonce
 	randombytes_buf_deterministic(con->nonce, sizeof con->nonce, seed);
