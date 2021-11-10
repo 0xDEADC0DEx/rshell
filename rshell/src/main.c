@@ -456,7 +456,7 @@ int main(int argc, char *argv[])
 			}
 		}
 
-		dbprint("Exiting!\n");
+		LOG(1, "Exiting!\n");
 	}
 	return 0;
 }
