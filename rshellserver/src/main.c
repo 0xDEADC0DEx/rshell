@@ -12,6 +12,7 @@
 #include <sodium.h>
 
 #include "wrapper.h"
+#include "logger.h"
 
 bool brexit = false;
 uint16_t port = 6969;
@@ -58,7 +59,8 @@ int argparse(int argc, char *argv[])
 
 				temp = longparse(argv[i + 1], NULL);
 				if (temp > UINT16_MAX || temp < 1) {
-					printf("Invalid argument given to -p option\n");
+					LOG(0,
+					    "Invalid argument given to -p option\n");
 					return -1;
 				} else {
 					port = temp;
@@ -68,12 +70,13 @@ int argparse(int argc, char *argv[])
 		}
 	}
 
-	printf("Port: %d\n", port);
+	LOG(1, "Port: %d\n", port);
 	return 0;
 }
 
 int main(int argc, char *argv[])
 {
+	int rv;
 	struct connection con;
 	struct sockaddr_in sin;
 	int sock;
@@ -89,7 +92,7 @@ int main(int argc, char *argv[])
 	// setup socket
 	sock = socket(PF_INET, SOCK_STREAM, 0);
 	if (sock < 0) {
-		perror("socket failed");
+		ERR(sock);
 		return -3;
 	}
 
@@ -98,8 +101,9 @@ int main(int argc, char *argv[])
 	sin.sin_port = htons(port);
 
 	// bind to port
-	if (bind(sock, (struct sockaddr *)&sin, sizeof(sin))) {
-		perror("bind failed");
+	rv = bind(sock, (struct sockaddr *)&sin, sizeof(sin));
+	if (rv) {
+		ERR(rv);
 		return -4;
 	}
 	listen(sock, 1);
@@ -111,14 +115,16 @@ int main(int argc, char *argv[])
 		action.sa_flags = 0;
 		sigemptyset(&action.sa_mask);
 
-		if (sigaction(SIGINT, &action, NULL)) {
-			perror("sigaction failed");
+		rv = sigaction(SIGINT, &action, NULL);
+		if (rv) {
+			ERR(rv);
 			return -5;
 		}
 	}
 
-	if (fcntl(STDIN_FILENO, F_SETFL, O_NONBLOCK)) {
-		perror("fcntl failed");
+	rv = fcntl(STDIN_FILENO, F_SETFL, O_NONBLOCK);
+	if (rv) {
+		ERR(rv);
 		return -6;
 	}
 
@@ -126,24 +132,26 @@ int main(int argc, char *argv[])
 		// accept new connection
 		socklen_t addrlen = sizeof(struct sockaddr_in);
 
-		printf("Waiting for connection\n");
+		LOG(0, "Waiting for connection\n");
 
 		con.sock = accept(sock, (struct sockaddr *)&sin, &addrlen);
 		if (con.sock < 0) {
-			perror("accept failed");
+			LOG(-1, "accept failed with %d\n", con.sock);
 			return -7;
 		}
-		printf("Connected!\n");
+		LOG(0, "Connected!\n");
 
 		// exchange keys
-		if (keyexchange(con.sock, &con.ctx, false)) {
-			printf("keyexchange failed\n");
+		rv = keyexchange(con.sock, &con.ctx, false);
+		if (rv) {
+			LOG(-1, "keyexchange failed with %d\n", rv);
 			return -8;
 		}
-		printf("Authentication Complete!\n");
+		LOG(0, "Authentication Complete!\n");
 
-		if (fcntl(con.sock, F_SETFL, O_NONBLOCK)) {
-			perror("fcntl failed");
+		rv = fcntl(con.sock, F_SETFL, O_NONBLOCK);
+		if (rv) {
+			ERR(rv);
 			return -9;
 		}
 
@@ -161,9 +169,11 @@ int main(int argc, char *argv[])
 			}
 
 			if (len > 0) {
-				if (send_encrypted(con.sock, &con.ctx, buff) <
-				    0) {
-					printf("send_encrypted failed!");
+				rv = send_encrypted(con.sock, &con.ctx, buff);
+				if (rv < 0) {
+					LOG(-1,
+					    "send_encrypted failed with %d!",
+					    rv);
 					return -11;
 				}
 			}
@@ -185,7 +195,8 @@ int main(int argc, char *argv[])
 				}
 
 			} else if (len < 0) {
-				printf("recv_encrypted failed with %d!\n", len);
+				LOG(-1, "recv_encrypted failed with %d!\n",
+				    len);
 				return -13;
 			}
 
@@ -194,14 +205,16 @@ int main(int argc, char *argv[])
 			}
 		}
 
-		if (close(con.sock)) {
-			perror("close failed");
+		rv = close(con.sock);
+		if (rv) {
+			ERR(rv);
 			return -14;
 		}
 	}
 
-	if (close(sock)) {
-		perror("close failed");
+	rv = close(sock);
+	if (rv) {
+		ERR(rv);
 		return -15;
 	}
 	return 0;

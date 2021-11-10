@@ -5,6 +5,7 @@
 
 #include <sodium.h>
 
+#include "logger.h"
 #include "wrapper.h"
 
 int send_encrypted(int sock, struct crypto_ctx *con,
@@ -12,6 +13,8 @@ int send_encrypted(int sock, struct crypto_ctx *con,
 {
 	int len;
 	unsigned char cipher_buff[TRANS_BUFF_SIZE + crypto_secretbox_MACBYTES];
+
+	LOG(1, "Sending:\n%s\n", buff);
 
 	crypto_secretbox_easy(cipher_buff, buff, TRANS_BUFF_SIZE, con->nonce,
 			      con->tx);
@@ -21,8 +24,9 @@ int send_encrypted(int sock, struct crypto_ctx *con,
 
 	if (len > 0) {
 		/* sodium_increment(con->nonce, sizeof con->nonce); */
-		dbprint("Nonce incremented!\n");
+		LOG(1, "Nonce incremented!\n");
 	}
+	LOG(1, "Sent:\n%s\n", buff);
 	return len;
 }
 
@@ -47,7 +51,7 @@ int recv_encrypted(int sock, struct crypto_ctx *con,
 		}
 
 		/* sodium_increment(con->nonce, sizeof con->nonce); */
-		dbprint("Nonce incremented!\n");
+		LOG(1, "Nonce incremented!\n");
 		return len;
 	}
 	return 0;
@@ -58,9 +62,9 @@ void printkey(unsigned char input[], size_t len)
 	size_t i;
 
 	for (i = 0; i < len; i++) {
-		dbprintf("%x", input[i]);
+		LOG(1, "%x", input[i]);
 	}
-	dbprint("\n");
+	LOG(1, "\n");
 }
 
 int keyexchange(int sock, struct crypto_ctx *con, bool client)
@@ -95,17 +99,17 @@ int keyexchange(int sock, struct crypto_ctx *con, bool client)
 	}
 
 #ifdef DEBUG
-	dbprint("Self public key:");
+	LOG(1, "Self public key:");
 	printkey(con->self_pk, crypto_kx_PUBLICKEYBYTES);
-	dbprint("Self private key:");
+	LOG(1, "Self private key:");
 	printkey(con->self_sk, crypto_kx_SECRETKEYBYTES);
 
-	dbprint("Remote public key:");
+	LOG(1, "Remote public key:");
 	printkey(con->other_pk, crypto_kx_PUBLICKEYBYTES);
 
-	dbprint("Session Keys:\nRx:");
+	LOG(1, "Session Keys:\nRx:");
 	printkey(con->rx, crypto_kx_SESSIONKEYBYTES);
-	dbprint("Tx:");
+	LOG(1, "Tx:");
 	printkey(con->tx, crypto_kx_SESSIONKEYBYTES);
 #endif
 
@@ -123,7 +127,7 @@ int keyexchange(int sock, struct crypto_ctx *con, bool client)
 		int rv;
 		rv = recv_encrypted(sock, con, temp);
 		if (rv < 0) {
-			dbprintf("recv_encrypted failed with %d\n", rv);
+			LOG(-1, "recv_encrypted failed with %d\n", rv);
 			return -5;
 		}
 
