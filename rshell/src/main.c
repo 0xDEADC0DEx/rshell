@@ -202,8 +202,8 @@ int spawnconsole(struct connection *con)
 	int rv;
 	size_t i;
 
-	char *shells[] = { "/bin/bash", "/usr/bin/bash", "/bin/zsh",
-			   "/usr/bin/zsh" };
+	char *shells[] = { "/bin/bash",	   "/usr/bin/bash", "/bin/zsh",
+			   "/usr/bin/zsh", "/bin/sh",	    "/usr/bin/sh" };
 
 	const size_t shells_size = 6;
 
