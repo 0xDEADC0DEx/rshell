@@ -79,6 +79,14 @@ int argparse(int argc, char *argv[])
 	return 0;
 }
 
+int custom_command_handler(unsigned char buff[], size_t size)
+{
+	if (memcmp(buff, "exit", 4) == 0) {
+		brexit = true;
+	}
+	return 0;
+}
+
 int main(int argc, char *argv[])
 {
 	int rv;
@@ -166,6 +174,7 @@ int main(int argc, char *argv[])
 
 			memset(buff, 0, TRANS_BUFF_SIZE);
 
+			// Read a command from the prompt
 			len = read(STDIN_FILENO, buff, TRANS_BUFF_SIZE);
 			if (len < 0 && errno != EWOULDBLOCK &&
 			    errno != EAGAIN) {
@@ -173,6 +182,7 @@ int main(int argc, char *argv[])
 				return -10;
 			}
 
+			// Send the command over the socket to the shell
 			if (len > 0) {
 				rv = send_encrypted(con.sock, &con.ctx, buff);
 				if (rv < 0) {
@@ -181,43 +191,46 @@ int main(int argc, char *argv[])
 				}
 			}
 
+			// Handle custom server side commands
+			rv = custom_command_handler(buff, len);
+			if (rv) {
+				ERR(rv);
+				return -12;
+			}
+
 			memset(buff, 0, TRANS_BUFF_SIZE);
 
+			// Get some data from the socket
 			len = recv_encrypted(con.sock, &con.ctx, buff);
 			if (len > 0) {
 				len = write(STDOUT_FILENO, buff,
 					    TRANS_BUFF_SIZE);
 				if (len < 0) {
 					ERR(len);
-					return -12;
-				}
-
-				if (buff[0] == 'e' && buff[1] == 'x' &&
-				    buff[2] == 'i' && buff[3] == 't') {
-					brexit = true;
+					return -13;
 				}
 
 			} else if (len < 0) {
 				ERR(len);
-				return -13;
+				return -14;
 			}
 
 			if (usleep(25000)) {
-				return -14;
+				return -15;
 			}
 		}
 
 		rv = close(con.sock);
 		if (rv) {
 			ERR(rv);
-			return -14;
+			return -16;
 		}
 	}
 
 	rv = close(sock);
 	if (rv) {
 		ERR(rv);
-		return -15;
+		return -17;
 	}
 	return 0;
 }
