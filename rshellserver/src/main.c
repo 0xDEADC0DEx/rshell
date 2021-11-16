@@ -174,7 +174,6 @@ int main(int argc, char *argv[])
 
 			memset(buff, 0, TRANS_BUFF_SIZE);
 
-			// Read a command from the prompt
 			len = read(STDIN_FILENO, buff, TRANS_BUFF_SIZE);
 			if (len < 0 && errno != EWOULDBLOCK &&
 			    errno != EAGAIN) {
